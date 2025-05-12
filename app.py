@@ -2,7 +2,7 @@ from flask import Flask, request, send_file, render_template_string
 from pdf2docx import Converter
 from docx import Document
 from PIL import Image
-import pytesseract
+import easyocr
 from pdf2image import convert_from_path
 import os
 import uuid
@@ -93,7 +93,7 @@ def convert():
         return send_file(output, as_attachment=True)
 
     elif option == 'image2word':
-        text = pytesseract.image_to_string(Image.open(filename))
+        text = easyocr.image_to_string(Image.open(filename))
         doc = Document()
         doc.add_paragraph(text)
         output = filename.split('.')[0] + "_ocr.docx"
