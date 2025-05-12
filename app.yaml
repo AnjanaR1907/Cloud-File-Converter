@@ -1,5 +1,5 @@
 app:
-  name: Cloud File Converter
+  name: CloudConverterX
   version: 1.0
   supported_formats:
     - image2text
