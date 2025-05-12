@@ -5,3 +5,4 @@ docx2pdf
 pdf2image
 pillow
 pytesseract
+gunicorn
