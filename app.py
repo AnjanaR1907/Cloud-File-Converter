@@ -13,7 +13,7 @@ HTML_PAGE = """
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Cloud File Converter</title>
+  <title>CloudConverterX</title>
   <style>
     body {
       font-family: 'Segoe UI', sans-serif;
