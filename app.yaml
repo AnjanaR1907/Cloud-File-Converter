@@ -1,0 +1,7 @@
+app:
+  name: Cloud File Converter
+  version: 1.0
+  supported_formats:
+    - image2text
+    - pdf2docx
+

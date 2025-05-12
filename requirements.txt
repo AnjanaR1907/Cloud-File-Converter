@@ -1,0 +1,4 @@
+Flask
+pytesseract
+pdf2docx
+Pillow
