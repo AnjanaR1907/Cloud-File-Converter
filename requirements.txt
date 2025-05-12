@@ -1,5 +1,7 @@
 Flask
-pytesseract
 pdf2docx
-Pillow
-gunicorn
+python-docx
+docx2pdf
+pdf2image
+pillow
+pytesseract
