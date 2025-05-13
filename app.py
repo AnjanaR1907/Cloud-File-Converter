@@ -1,11 +1,12 @@
 from flask import Flask, request, send_file, render_template_string
 from pdf2docx import Converter
 from docx import Document
-from PIL import Image
-import easyocr
+from PIL import Image, ImageDraw
 from pdf2image import convert_from_path
+import easyocr
 import os
 import uuid
+import zipfile
 
 app = Flask(__name__)
 
@@ -77,70 +78,77 @@ def convert():
     filename = str(uuid.uuid4()) + "_" + file.filename
     file.save(filename)
 
-    if option == 'pdf2docx':
-        output = filename.replace(".pdf", ".docx")
-        cv = Converter(filename)
-        cv.convert(output)
-        cv.close()
+    try:
+        if option == 'pdf2docx':
+            output = filename.replace(".pdf", ".docx")
+            cv = Converter(filename)
+            cv.convert(output)
+            cv.close()
+
+        elif option == 'docx2pdf':
+            try:
+                from docx2pdf import convert
+                output = filename.replace(".docx", ".pdf")
+                convert(filename, output)
+            except:
+                # Fallback: create a simple PDF with text
+                from docx import Document
+                from reportlab.pdfgen import canvas
+                temp_doc = Document(filename)
+                text = "\n".join([p.text for p in temp_doc.paragraphs])
+                output = filename.replace(".docx", ".pdf")
+                c = canvas.Canvas(output)
+                for i, line in enumerate(text.splitlines()):
+                    c.drawString(50, 800 - 15*i, line)
+                c.save()
+
+        elif option == 'image2word':
+            reader = easyocr.Reader(['en'])
+            result = reader.readtext(filename, detail=0)
+            doc = Document()
+            doc.add_heading('Extracted Text', 0)
+            for line in result:
+                doc.add_paragraph(line)
+            output = filename.rsplit('.', 1)[0] + "_ocr.docx"
+        
+        elif option == 'word2image':
+            doc = Document(filename)
+            text = "\n".join([p.text for p in doc.paragraphs])
+            img = Image.new("RGB", (800, 1000), color="white")
+            draw = ImageDraw.Draw(img)
+            draw.text((20, 20), text[:4000], fill="black")
+            output = filename.replace(".docx", ".png")
+            img.save(output)
+
+        elif option == 'image2pdf':
+            img = Image.open(filename).convert('RGB')
+            output = filename.rsplit('.', 1)[0] + ".pdf"
+            img.save(output)
+
+        elif option == 'pdf2image':
+            images = convert_from_path(filename)
+            output_files = []
+            for i, img in enumerate(images):
+                out = f"{filename}_page{i+1}.png"
+                img.save(out, 'PNG')
+                output_files.append(out)
+
+            zipname = filename.replace(".pdf", "_images.zip")
+            with zipfile.ZipFile(zipname, 'w') as zipf:
+                for f in output_files:
+                    zipf.write(f)
+                    os.remove(f)
+            output = zipname
+
+        else:
+            return "Unsupported option", 400
+
         os.remove(filename)
         return send_file(output, as_attachment=True)
 
-    elif option == 'docx2pdf':
-        from docx2pdf import convert
-        output = filename.replace(".docx", ".pdf")
-        convert(filename, output)
+    except Exception as e:
         os.remove(filename)
-        return send_file(output, as_attachment=True)
-
-    elif option == 'image2word':
-        text = easyocr.image_to_string(Image.open(filename))
-        doc = Document()
-        doc.add_paragraph(text)
-        output = filename.split('.')[0] + "_ocr.docx"
-        doc.save(output)
-        os.remove(filename)
-        return send_file(output, as_attachment=True)
-
-    elif option == 'word2image':
-        from docx import Document
-        doc = Document(filename)
-        text = "\n".join([p.text for p in doc.paragraphs])
-        img = Image.new("RGB", (800, 1000), color="white")
-        from PIL import ImageDraw
-        draw = ImageDraw.Draw(img)
-        draw.text((20, 20), text[:4000], fill="black")
-        output = filename.replace(".docx", ".png")
-        img.save(output)
-        os.remove(filename)
-        return send_file(output, as_attachment=True)
-
-    elif option == 'image2pdf':
-        img = Image.open(filename).convert('RGB')
-        output = filename.rsplit('.', 1)[0] + ".pdf"
-        img.save(output)
-        os.remove(filename)
-        return send_file(output, as_attachment=True)
-
-    elif option == 'pdf2image':
-        images = convert_from_path(filename)
-        output_files = []
-        for i, img in enumerate(images):
-            out = f"{filename}_page{i+1}.png"
-            img.save(out, 'PNG')
-            output_files.append(out)
-
-        # Zip output images
-        import zipfile
-        zipname = filename.replace(".pdf", "_images.zip")
-        with zipfile.ZipFile(zipname, 'w') as zipf:
-            for f in output_files:
-                zipf.write(f)
-                os.remove(f)
-
-        os.remove(filename)
-        return send_file(zipname, as_attachment=True)
-
-    return "Unsupported option", 400
+        return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True)
